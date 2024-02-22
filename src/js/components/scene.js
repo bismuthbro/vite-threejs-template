@@ -3,15 +3,18 @@ import {
   WebGLRenderer,
   Scene,
   PerspectiveCamera,
-  Mesh,
-  SphereGeometry,
-  MeshMatcapMaterial,
+  Points,
+  BufferGeometry,
+  BufferAttribute,
   AxesHelper,
+  ShaderMaterial,
 } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import Stats from 'stats-js'
 import LoaderManager from '@/js/managers/LoaderManager'
 import GUI from 'lil-gui'
+import vertexShader from '../glsl/main.vert'
+import fragmentShader from '../glsl/main.frag'
 
 export default class MainScene {
   #canvas
@@ -38,8 +41,8 @@ export default class MainScene {
     // Preload assets before initiating the scene
     const assets = [
       {
-        name: 'matcap',
-        texture: './img/matcap.png',
+        name: 'image',
+        texture: './img/image.jpg',
       },
     ]
 
@@ -51,9 +54,8 @@ export default class MainScene {
     this.setRender()
     this.setCamera()
     this.setControls()
-    this.setAxesHelper()
 
-    this.setSphere()
+    this.setParticlesGrid()
 
     this.handleResize()
 
@@ -78,7 +80,7 @@ export default class MainScene {
    */
   setScene() {
     this.#scene = new Scene()
-    this.#scene.background = new Color(0xffffff)
+    this.#scene.background = new Color(0x000000)
   }
 
   /**
@@ -95,9 +97,9 @@ export default class MainScene {
     const farPlane = 10000
 
     this.#camera = new PerspectiveCamera(fieldOfView, aspectRatio, nearPlane, farPlane)
-    this.#camera.position.y = 5
-    this.#camera.position.x = 5
-    this.#camera.position.z = 5
+    this.#camera.position.y = 0
+    this.#camera.position.x = 0
+    this.#camera.position.z = 300
     this.#camera.lookAt(0, 0, 0)
 
     this.#scene.add(this.#camera)
@@ -123,17 +125,44 @@ export default class MainScene {
   }
 
   /**
-   * Create a SphereGeometry
-   * https://threejs.org/docs/?q=box#api/en/geometries/SphereGeometry
-   * with a Basic material
-   * https://threejs.org/docs/?q=mesh#api/en/materials/MeshBasicMaterial
-   */
-  setSphere() {
-    const geometry = new SphereGeometry(1, 32, 32)
-    const material = new MeshMatcapMaterial({ matcap: LoaderManager.assets['matcap'].texture })
 
-    this.#mesh = new Mesh(geometry, material)
-    this.#scene.add(this.#mesh)
+   */
+  setParticlesGrid() {
+    const geometry = new BufferGeometry();
+
+    const multiplier = 18
+    const nbColumns = 16 * multiplier;
+    const nbLines = 9 * multiplier;
+
+    const vertices = []
+
+    for (let i = 0; i < nbColumns; i++){
+      for (let y = 0; y < nbLines; y++){
+        const point = [i, y, 0]
+
+        vertices.push(...point)
+      }
+    }
+
+    console.log(vertices)
+    const vertices32 = new Float32Array(vertices);
+    geometry.setAttribute( 'position', new BufferAttribute( vertices32, 3 ) );
+    geometry.center()
+    
+    const material = new ShaderMaterial({
+      fragmentShader,
+      vertexShader,
+      uniforms: {
+        uPointSize: {value : 3},
+        uTexture: {value: LoaderManager.assets['image'].texture},
+        uNbLines: {value: nbLines},
+        uNbColumns: {value: nbColumns},
+      },
+      transparent: true
+    });
+    const mesh = new Points( geometry, material );
+
+    this.#scene.add(mesh)
   }
 
   /**

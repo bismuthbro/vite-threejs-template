@@ -1,7 +1,12 @@
-varying vec2 vUv;
+uniform float uPointSize;
+
+varying vec2 vTexCoords;
 
 void main() {
-  vUv = uv;
+	#include <begin_vertex>
 
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+	#include <project_vertex>
+	gl_PointSize = uPointSize;
+
+  vTexCoords = position.xy;
 }
